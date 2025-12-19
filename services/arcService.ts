@@ -26,28 +26,23 @@ const ARC_CONFIG = {
   blockExplorerUrls: ["https://testnet.arcscan.app"],
 };
 
-const base64ToBlob = async (base64Data: string): Promise<Blob> => {
-  const parts = base64Data.split(',');
-  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png';
-  const bstr = atob(parts[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-};
-
 const clean = (addr: string) => addr.trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
 
-// Helper to generate a short anonymous ID from a string (like a UUID or timestamp)
+/**
+ * Enhanced Anonymous ID Generator
+ */
 const generateShortId = (input: string) => {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = ((hash << 5) - hash) + input.charCodeAt(i);
-    hash |= 0;
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0, ch; i < input.length; i++) {
+    ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  return `ORN-${Math.abs(hash).toString(36).toUpperCase().slice(0, 6)}`;
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  
+  const hash = (4294967296 * (2097151 & h2) + (h1 >>> 0));
+  return `ORN-${Math.abs(hash).toString(36).toUpperCase().slice(0, 8)}`;
 };
 
 export const ArcService = {
@@ -82,6 +77,9 @@ export const ArcService = {
     }
   },
 
+  /**
+   * READ operation remains public via Supabase Client (SELECT)
+   */
   checkEligibility: async (walletAddress: string): Promise<CheckResult> => {
     if (!isSupabaseConfigured) {
       return { status: 'ELIGIBLE', message: "Simulated Access", nextAction: 'STUDIO', data: { generation_count: 0, mint_count: 0 } };
@@ -102,31 +100,50 @@ export const ArcService = {
     return { status: 'ELIGIBLE', message: "Welcome back.", nextAction: 'STUDIO', data: { generation_count: data.generation_count, mint_count: data.mint_count } };
   },
 
+  /**
+   * WRITE operation moved to SERVER API (POST /api/generation)
+   */
   recordGeneration: async (walletAddress: string): Promise<number> => {
     if (!isSupabaseConfigured) return 0;
-    const { data, error } = await supabase.rpc('inc_generation', { p_wallet: clean(walletAddress) });
-    if (error) throw error;
-    return data;
+    
+    const response = await fetch('/api/generation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: clean(walletAddress) }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || "Failed to record generation on server.");
+    }
+
+    const { newCount } = await response.json();
+    return newCount;
   },
 
+  /**
+   * COMPLEX WRITE operation moved to SERVER API (POST /api/mint)
+   * Handles storage upload and database insertion securely using SERVICE_ROLE.
+   */
   mintOrnament: async (imageUrl: string, walletAddress: string, description: string): Promise<{ txHash: string; publicUrl: string; newMintCount: number }> => {
     if (!isSupabaseConfigured) return { txHash: "0xSIM", publicUrl: imageUrl, newMintCount: 1 };
-    const addr = clean(walletAddress);
-    const blob = await base64ToBlob(imageUrl);
-    const fileName = `${addr}_${Date.now()}.png`;
-
-    const { error: uploadErr } = await supabase.storage.from('ornaments').upload(fileName, blob, { contentType: 'image/png' });
-    if (uploadErr) throw uploadErr;
-    const { data: { publicUrl } } = supabase.storage.from('ornaments').getPublicUrl(fileName);
-    const { data: newMintCount, error: rpcErr } = await supabase.rpc('inc_mint', { p_wallet: addr });
-    if (rpcErr) throw rpcErr;
-    const { error: insertErr } = await supabase.from('ornaments').insert({
-      wallet_address: addr,
-      image_url: publicUrl,
-      description: description
+    
+    const response = await fetch('/api/mint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        image: imageUrl, 
+        wallet: clean(walletAddress), 
+        description 
+      }),
     });
-    if (insertErr) throw insertErr;
-    return { txHash: "0x" + Math.random().toString(16).slice(2), publicUrl, newMintCount };
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || "Minting failed on server side.");
+    }
+
+    return await response.json();
   },
 
   getMyOrnaments: async (walletAddress: string) => {
