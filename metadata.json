@@ -1,0 +1,5 @@
+{
+  "name": "Monad Ornament Studio",
+  "description": "Generate custom 3D Christmas ornaments from your PFP using Gemini Vision and place them on a festive tree.",
+  "requestFramePermissions": []
+}
