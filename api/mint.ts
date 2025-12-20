@@ -1,5 +1,6 @@
 export const config = { runtime: "nodejs" };
 
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -11,20 +12,30 @@ const clean = (addr: string) =>
   addr.trim().replace(/[\u200B-\u200D\uFEFF]/g, "").toLowerCase();
 
 function dataUrlToBuffer(dataUrl: string) {
-  // expects: "data:image/png;base64,....."
   const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
   if (!match) throw new Error("Invalid image format (expected base64 data URL).");
+
   const mime = match[1];
   const b64 = match[2];
   const buffer = Buffer.from(b64, "base64");
-  return { buffer, mime };
+
+  // mime 기반 확장자 추정
+  const ext =
+    mime.includes("png") ? "png" :
+    mime.includes("jpeg") || mime.includes("jpg") ? "jpg" :
+    mime.includes("webp") ? "webp" :
+    "png";
+
+  return { buffer, mime, ext };
 }
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
   try {
-    const { image, wallet, description } = req.body || {};
+    const { image, wallet, description } = (req.body as any) || {};
 
     if (!image || !wallet) {
       return res.status(400).json({ message: "Missing params: image, wallet" });
@@ -32,9 +43,9 @@ export default async function handler(req: any, res: any) {
 
     const addr = clean(wallet);
 
-    // 1) 이미지 base64 → 업로드
-    const { buffer, mime } = dataUrlToBuffer(image);
-    const fileName = `${addr}_${Date.now()}.png`; // png로 저장 (대부분 dataUrl이 png로 옴)
+    // 1) base64 이미지 → Storage 업로드
+    const { buffer, mime, ext } = dataUrlToBuffer(image);
+    const fileName = `${addr}_${Date.now()}.${ext}`;
 
     const { error: uploadErr } = await supabase.storage
       .from("ornaments")
@@ -56,6 +67,7 @@ export default async function handler(req: any, res: any) {
     const { data: newMintCount, error: rpcErr } = await supabase.rpc("inc_mint", {
       p_wallet: addr,
     });
+
     if (rpcErr) {
       console.error("inc_mint error:", rpcErr);
       return res.status(500).json({ message: rpcErr.message });
@@ -73,7 +85,6 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ message: insertErr.message });
     }
 
-    // 프론트가 기대하는 형태로 반환
     return res.status(200).json({
       txHash: "0x" + Math.random().toString(16).slice(2),
       publicUrl,

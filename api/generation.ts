@@ -1,5 +1,6 @@
 export const config = { runtime: "nodejs" };
 
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,11 +11,13 @@ const supabase = createClient(
 const clean = (addr: string) =>
   addr.trim().replace(/[\u200B-\u200D\uFEFF]/g, "").toLowerCase();
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
   try {
-    const { wallet } = req.body || {};
+    const { wallet } = (req.body as any) || {};
     if (!wallet) return res.status(400).json({ message: "Missing wallet" });
 
     const { data, error } = await supabase.rpc("inc_generation", {

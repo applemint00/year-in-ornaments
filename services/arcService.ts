@@ -1,5 +1,4 @@
-
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 export interface WalletUser {
   address: string;
@@ -8,9 +7,9 @@ export interface WalletUser {
 }
 
 export type CheckResult = {
-  status: 'ELIGIBLE' | 'COMPLETED' | 'REJECTED' | 'ERROR';
+  status: "ELIGIBLE" | "COMPLETED" | "REJECTED" | "ERROR";
   message: string;
-  nextAction: 'STUDIO' | 'TREE' | 'RETRY';
+  nextAction: "STUDIO" | "TREE" | "RETRY";
   data?: {
     generation_count: number;
     mint_count: number;
@@ -26,22 +25,26 @@ const ARC_CONFIG = {
   blockExplorerUrls: ["https://testnet.arcscan.app"],
 };
 
-const clean = (addr: string) => addr.trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
+const clean = (addr: string) =>
+  addr.trim().replace(/[\u200B-\u200D\uFEFF]/g, "").toLowerCase();
 
-/**
- * Enhanced Anonymous ID Generator
- */
+// Enhanced Anonymous ID Generator
 const generateShortId = (input: string) => {
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  let h1 = 0xdeadbeef,
+    h2 = 0x41c6ce57;
   for (let i = 0, ch; i < input.length; i++) {
     ch = input.charCodeAt(i);
     h1 = Math.imul(h1 ^ ch, 2654435761);
     h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  
-  const hash = (4294967296 * (2097151 & h2) + (h1 >>> 0));
+  h1 =
+    Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
+    Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 =
+    Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
+    Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+
+  const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
   return `ORN-${Math.abs(hash).toString(36).toUpperCase().slice(0, 8)}`;
 };
 
@@ -66,115 +69,141 @@ export const ArcService = {
               method: "wallet_addEthereumChain",
               params: [ARC_CONFIG],
             });
-          } catch (addError) {
+          } catch {
             console.warn("User declined network addition.");
           }
         }
       }
+
       return { address, balance: "0", isConnected: true };
     } catch (error: any) {
       throw new Error(error.message || "Connection failed.");
     }
   },
 
-  /**
-   * READ operation remains public via Supabase Client (SELECT)
-   */
+  // READ: Supabase anon (public SELECT)
   checkEligibility: async (walletAddress: string): Promise<CheckResult> => {
     if (!isSupabaseConfigured) {
-      return { status: 'ELIGIBLE', message: "Simulated Access", nextAction: 'STUDIO', data: { generation_count: 0, mint_count: 0 } };
+      return {
+        status: "ELIGIBLE",
+        message: "Simulated Access",
+        nextAction: "STUDIO",
+        data: { generation_count: 0, mint_count: 0 },
+      };
     }
+
     const addr = clean(walletAddress);
     const { data, error } = await supabase
-      .from('guests')
-      .select('*')
-      .eq('wallet_address', addr)
+      .from("guests")
+      .select("*")
+      .eq("wallet_address", addr)
       .single();
 
     if (error || !data) {
-      return { status: 'REJECTED', message: "Not on guestlist.", nextAction: 'RETRY' };
+      return { status: "REJECTED", message: "Not on guestlist.", nextAction: "RETRY" };
     }
+
     if (data.mint_count >= 2) {
-      return { status: 'COMPLETED', message: "Tree is full!", nextAction: 'TREE', data: { generation_count: data.generation_count, mint_count: data.mint_count } };
+      return {
+        status: "COMPLETED",
+        message: "Tree is full!",
+        nextAction: "TREE",
+        data: { generation_count: data.generation_count, mint_count: data.mint_count },
+      };
     }
-    return { status: 'ELIGIBLE', message: "Welcome back.", nextAction: 'STUDIO', data: { generation_count: data.generation_count, mint_count: data.mint_count } };
+
+    return {
+      status: "ELIGIBLE",
+      message: "Welcome back.",
+      nextAction: "STUDIO",
+      data: { generation_count: data.generation_count, mint_count: data.mint_count },
+    };
   },
 
-  /**
-   * WRITE operation moved to SERVER API (POST /api/generation)
-   */
+  // WRITE: server function
   recordGeneration: async (walletAddress: string): Promise<number> => {
     if (!isSupabaseConfigured) return 0;
-    
-    const response = await fetch('/api/generation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+
+    const response = await fetch("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wallet: clean(walletAddress) }),
     });
 
+    const payload = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Failed to record generation on server.");
+      throw new Error(payload?.message || "Failed to record generation on server.");
     }
 
-    const { newCount } = await response.json();
-    return newCount;
+    return payload.newCount;
   },
 
-  /**
-   * COMPLEX WRITE operation moved to SERVER API (POST /api/mint)
-   * Handles storage upload and database insertion securely using SERVICE_ROLE.
-   */
-  mintOrnament: async (imageUrl: string, walletAddress: string, description: string): Promise<{ txHash: string; publicUrl: string; newMintCount: number }> => {
-    if (!isSupabaseConfigured) return { txHash: "0xSIM", publicUrl: imageUrl, newMintCount: 1 };
-    
-    const response = await fetch('/api/mint', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        image: imageUrl, 
-        wallet: clean(walletAddress), 
-        description 
+  // WRITE: server function (upload + rpc + insert)
+  mintOrnament: async (
+    imageUrl: string,
+    walletAddress: string,
+    description: string
+  ): Promise<{ txHash: string; publicUrl: string; newMintCount: number }> => {
+    if (!isSupabaseConfigured) {
+      return { txHash: "0xSIM", publicUrl: imageUrl, newMintCount: 1 };
+    }
+
+    const response = await fetch("/api/mint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image: imageUrl, // base64 data URL
+        wallet: clean(walletAddress),
+        description,
       }),
     });
 
+    const payload = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Minting failed on server side.");
+      throw new Error(payload?.message || "Minting failed on server side.");
     }
 
-    return await response.json();
+    return payload;
   },
 
+  // READ: Supabase anon (public SELECT)
   getMyOrnaments: async (walletAddress: string) => {
     if (!isSupabaseConfigured) return [];
+
     const { data, error } = await supabase
-      .from('ornaments')
-      .select('*')
-      .eq('wallet_address', clean(walletAddress))
-      .order('created_at', { ascending: true });
+      .from("ornaments")
+      .select("*")
+      .eq("wallet_address", clean(walletAddress))
+      .order("created_at", { ascending: true });
+
     if (error || !data) return [];
-    return data.map(item => ({ 
+
+    return data.map((item: any) => ({
       id: generateShortId(item.id.toString()),
-      url: item.image_url, 
-      desc: item.description, 
-      owner: item.wallet_address 
+      url: item.image_url,
+      desc: item.description,
+      owner: item.wallet_address,
     }));
   },
 
   getGlobalOrnaments: async (limit = 60) => {
     if (!isSupabaseConfigured) return [];
+
     const { data, error } = await supabase
-      .from('ornaments')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("ornaments")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(limit);
+
     if (error || !data) return [];
-    return data.map(item => ({ 
+
+    return data.map((item: any) => ({
       id: generateShortId(item.id.toString()),
-      url: item.image_url, 
-      desc: item.description, 
-      owner: item.wallet_address 
+      url: item.image_url,
+      desc: item.description,
+      owner: item.wallet_address,
     }));
-  }
+  },
 };
