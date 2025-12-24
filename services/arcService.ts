@@ -130,10 +130,10 @@ export const ArcService = {
   },
 
   // ✅ WRITE: server function
-  recordGeneration: async (walletAddress: string): Promise<number> => {
+    recordGeneration: async (walletAddress: string): Promise<number> => {
     if (!isSupabaseConfigured) return 0;
 
-    const response = await fetch("/api/generation", {
+    const response = await fetch("/api/record-generation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wallet: clean(walletAddress) }),
@@ -147,6 +147,7 @@ export const ArcService = {
 
     return payload.newCount;
   },
+
 
   // ✅ WRITE: server function (upload + rpc + insert)
   mintOrnament: async (
