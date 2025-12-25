@@ -250,7 +250,7 @@ export default function WalletEntry({ onComplete, onSkip }: Props) {
           onClick={onSkip}
           className="text-[#FFDFA6] font-serif text-[10px] tracking-[0.2em] uppercase opacity-60 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_5px_rgba(212,175,55,0.8)] text-center"
         >
-          View Tree
+          View Yearbook
         </span>
       </div>
 

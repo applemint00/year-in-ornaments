@@ -94,7 +94,7 @@ const App: React.FC = () => {
   const handleSkipToTree = () => {
     const saved = localStorage.getItem("last_wallet_address");
     if (saved) setWalletAddress(saved.toLowerCase().trim());
-    setStage("tree");
+    setStage("yearbook");
   };
 
   const handleIntroComplete = () => setStage("studio");
@@ -162,7 +162,7 @@ const App: React.FC = () => {
       setCounts((prev) => ({ ...prev, mint: prev.mint + 1 }));
     }
     setTreeRefreshKey((k) => k + 1);
-    setStage("tree");
+    setStage("yearbook");
   };
 
   if (stage === "wallet-entry")
@@ -170,16 +170,32 @@ const App: React.FC = () => {
       <WalletEntry onComplete={handleWalletEntryComplete} onSkip={handleSkipToTree} />
     );
   if (stage === "intro") return <IntroSequence onComplete={handleIntroComplete} />;
-  if (stage === "tree")
-    return (
-      <Tree3D
-        key={treeRefreshKey}
-        walletAddress={walletAddress}
-        ornamentUrl={ornamentState.generatedImageUrl}
-        onReset={() => setStage("studio")}
-        canMintMore={!!walletAddress && counts.mint < MAX_MINTS}
-      />
-    );
+if (stage === "yearbook")
+  return (
+    <div className="min-h-screen bg-[#0b0b0b] text-[#FFDFA6] flex items-center justify-center">
+      <div className="text-center">
+        <div className="font-serif text-4xl tracking-wide">Year Book</div>
+
+        {ornamentState.generatedImageUrl ? (
+          <img
+            src={ornamentState.generatedImageUrl}
+            alt="Ornament"
+            className="mt-6 w-[320px] max-w-[80vw] rounded-xl border border-[#FFDFA6]/20 shadow"
+          />
+        ) : (
+          <div className="mt-6 opacity-70">No ornament image.</div>
+        )}
+
+        <button
+          className="mt-8 px-6 py-2 rounded-full border border-[#FFDFA6]/30 hover:bg-[#FFDFA6]/10 transition"
+          onClick={() => setStage("studio")}
+        >
+          Back to Studio
+        </button>
+      </div>
+    </div>
+  );
+
 
   return (
     <div className="min-h-screen flex flex-col text-softGold font-sans bg-burgundy">
