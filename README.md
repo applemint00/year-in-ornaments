@@ -35,4 +35,5 @@ Open the localhost URL provided in the terminal (usually http://localhost:5173).
 - **Wallet Entry:** Cool guestlist animation.
 - **Gemini AI:** Transforms 2D images into 3D-style ornaments via `gemini-2.5-flash-image`.
 - **Arc/Circle Wallet:** Simulation mode included for minting flow.
+- monad wallet is working 
 - **3D Tree:** Interactive React Three Fiber scene.

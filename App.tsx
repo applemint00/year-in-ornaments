@@ -10,6 +10,8 @@ import { STYLE_OPTIONS } from "./constants";
 import { AppStage, OrnamentState } from "./types";
 import { Plus, Sparkles, TreePine, Zap } from "lucide-react";
 
+
+
 const MAX_GENERATIONS = 4;
 const MAX_MINTS = 2;
 
@@ -28,8 +30,18 @@ const pickWish = (exclude?: string | null) => {
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-const App: React.FC = () => {
+type AppProps = {
+  routeStage?: AppStage;
+};
+
+const App: React.FC<AppProps> = ({ routeStage }) => {
+
   const [stage, setStage] = useState<AppStage>("wallet-entry");
+  useEffect(() => {
+  if (!routeStage) return;
+  setStage(routeStage);
+}, [routeStage]);
+
   const [error, setError] = useState<string | null>(null);
 
   const [walletAddress, setWalletAddress] = useState<string | null>(() =>
