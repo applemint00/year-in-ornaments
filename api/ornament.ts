@@ -10,7 +10,7 @@ import {
   IDENTITY_RULES,
   NEGATIVE_PROMPT,
   ORNAMENT_STYLES,
-} from "../constants/stylePresets.ts";
+} from "../constants/stylePresets";
 
 type Body = {
   imageBase64: string; // 순수 base64 (data: prefix 없음)
