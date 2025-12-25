@@ -25,7 +25,12 @@ export interface GlobalOrnament {
   createdAt: string;
 }
 
-export type AppStage = 'wallet-entry' | 'intro' | 'studio' | 'mint' | 'tree';
+export type AppStage =
+  | "wallet-entry"
+  | "intro"
+  | "studio"
+  | "mint"
+  | "yearbook";
 
 export interface WalletState {
   address: string | null;
