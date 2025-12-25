@@ -13,12 +13,24 @@ type Props = {
   onBack: () => void;
 };
 
-const resolveMintFn = () => {
+type MintFn = (
+  imageUrl: string,
+  walletAddress: string,
+  description: string
+) => Promise<any>;
+
+const resolveMintFn = (): MintFn | undefined => {
   const mod: any = ArcServiceModule as any;
   const svc = mod?.ArcService || mod?.default || mod;
-  const fn = svc?.mintOrnament || svc?.mint || mod?.mintOrnament || mod?.mint;
-  return fn as undefined | ((args: any) => Promise<any>);
+  const fn =
+    svc?.mintOrnament ||
+    svc?.mint ||
+    mod?.mintOrnament ||
+    mod?.mint;
+
+  return fn as MintFn | undefined;
 };
+
 
 const MintFlow: React.FC<Props> = ({
   imageUrl,
@@ -40,11 +52,8 @@ const MintFlow: React.FC<Props> = ({
       if (!mintFn) throw new Error("Mint function not found");
 
       // ✅ 여기서 실제 /api/mint 호출(=Supabase 저장)하도록 arcService가 구성돼있어야 함
-      const res = await mintFn({
-        imageUrl,
-        description,
-        userAddress,
-      });
+const res = await mintFn(imageUrl, userAddress!, description);
+
 
       const mintId = res?.mintId || res?.id;
       if (!mintId) throw new Error("No mintId returned from mint");
