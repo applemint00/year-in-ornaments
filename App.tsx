@@ -9,6 +9,7 @@ import { ArcService } from "./services/arcService";
 import { STYLE_OPTIONS } from "./constants";
 import { AppStage, OrnamentState } from "./types";
 import { Plus, Sparkles, TreePine, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 
 
@@ -35,8 +36,8 @@ type AppProps = {
 };
 
 const App: React.FC<AppProps> = ({ routeStage }) => {
-
-  const [stage, setStage] = useState<AppStage>("wallet-entry");
+  const navigate = useNavigate();
+  const [stage, setStage] = useState<AppStage>(routeStage ?? "wallet-entry");
   useEffect(() => {
   if (!routeStage) return;
   setStage(routeStage);
@@ -100,16 +101,16 @@ const App: React.FC<AppProps> = ({ routeStage }) => {
     setWalletAddress(cleanAddress);
     setCounts(userCounts);
     localStorage.setItem("last_wallet_address", cleanAddress);
-    setStage("intro");
+   navigate("/intro");
   };
 
   const handleSkipToTree = () => {
     const saved = localStorage.getItem("last_wallet_address");
     if (saved) setWalletAddress(saved.toLowerCase().trim());
-    setStage("yearbook");
+    navigate("/yearbook/2025");
   };
 
-  const handleIntroComplete = () => setStage("studio");
+  const handleIntroComplete = () => navigate("/studio");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -167,46 +168,20 @@ const App: React.FC<AppProps> = ({ routeStage }) => {
     }
   };
 
-  const handleMintComplete = (newMintCount?: number) => {
-    if (typeof newMintCount === "number") {
-      setCounts((prev) => ({ ...prev, mint: newMintCount }));
-    } else {
-      setCounts((prev) => ({ ...prev, mint: prev.mint + 1 }));
-    }
-    setTreeRefreshKey((k) => k + 1);
-    setStage("yearbook");
-  };
+const handleMintComplete = (mintId?: string) => {
+  setCounts((prev) => ({ ...prev, mint: prev.mint + 1 }));
+  setTreeRefreshKey((k) => k + 1);
+
+  navigate(`/yearbook/2025/mint/${mintId ?? "latest"}`);
+};
+
+
 
   if (stage === "wallet-entry")
     return (
       <WalletEntry onComplete={handleWalletEntryComplete} onSkip={handleSkipToTree} />
     );
   if (stage === "intro") return <IntroSequence onComplete={handleIntroComplete} />;
-if (stage === "yearbook")
-  return (
-    <div className="min-h-screen bg-[#0b0b0b] text-[#FFDFA6] flex items-center justify-center">
-      <div className="text-center">
-        <div className="font-serif text-4xl tracking-wide">Year Book</div>
-
-        {ornamentState.generatedImageUrl ? (
-          <img
-            src={ornamentState.generatedImageUrl}
-            alt="Ornament"
-            className="mt-6 w-[320px] max-w-[80vw] rounded-xl border border-[#FFDFA6]/20 shadow"
-          />
-        ) : (
-          <div className="mt-6 opacity-70">No ornament image.</div>
-        )}
-
-        <button
-          className="mt-8 px-6 py-2 rounded-full border border-[#FFDFA6]/30 hover:bg-[#FFDFA6]/10 transition"
-          onClick={() => setStage("studio")}
-        >
-          Back to Studio
-        </button>
-      </div>
-    </div>
-  );
 
 
   return (
