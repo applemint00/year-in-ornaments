@@ -379,14 +379,7 @@ const handleMintComplete = (mintId?: string) => {
                   )}
                 </div>
 
-                {ornamentState.generatedImageUrl && (
-                  <div className="mt-3 w-full shrink-0 h-[88px] px-2">
-                    <div className="flex items-center justify-between mb-2 px-4">
-                  
-             
-                 </div>
-                  </div>
-                )}
+            
               </div>
 
               <div className="w-full shrink-0 mt-4">

@@ -7,9 +7,8 @@ type Props = {
   description: string;
   userAddress?: string;
 
-  // ✅ mintId를 App으로 올려보내서 Yearbook 라우팅에 쓰는 구조
-  onMintComplete: (mintId: string, newMintCount?: number) => void;
-
+  // App은 mintId만 쓰는 구조로 유지
+  onMintComplete: (mintId: string) => void;
   onBack: () => void;
 };
 
@@ -29,8 +28,9 @@ const resolveMintFn = (): MintFn | undefined => {
 type UiStatus = "idle" | "minting" | "minted" | "error";
 
 const ERROR_COPY = "Transaction failed. Please try again.";
-const SUCCESS_COPY_1 = "This memory has been sealed.";
-const SUCCESS_COPY_2 = "Now, let’s begin your Year Book.";
+const SUCCESS_COPY_1 = "Minted.";
+const SUCCESS_COPY_2 = "This memory has been sealed.";
+const SUCCESS_COPY_3 = "Now, let’s begin your Year Book.";
 
 const MintFlow: React.FC<Props> = ({
   imageUrl,
@@ -42,7 +42,6 @@ const MintFlow: React.FC<Props> = ({
   const mintFn = useMemo(() => resolveMintFn(), []);
   const [status, setStatus] = useState<UiStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -51,8 +50,13 @@ const MintFlow: React.FC<Props> = ({
     };
   }, []);
 
+  const shortAddr = (() => {
+    const a = (userAddress ?? "").trim();
+    if (!a) return "—";
+    return `${a.slice(0, 6)}...${a.slice(-4)}`;
+  })();
+
   const handleMint = async () => {
-    // retry clears error
     setError(null);
     setStatus("minting");
 
@@ -65,19 +69,16 @@ const MintFlow: React.FC<Props> = ({
 
       const res = await mintFn(imageUrl, addr, description);
 
-      // tolerate common response shapes
       const mintId: string | undefined =
         res?.mintId || res?.id || res?.data?.mintId || res?.data?.id;
-      const newMintCount: number | undefined =
-        res?.newMintCount || res?.mintCount || res?.data?.newMintCount;
 
       if (!mintId) throw new Error("Mint succeeded but mintId is missing");
 
-      // ✅ show minted acknowledgement first
+      // minted acknowledgement
       setStatus("minted");
 
       timeoutRef.current = window.setTimeout(() => {
-        onMintComplete(mintId, newMintCount);
+        onMintComplete(mintId);
       }, 1000);
     } catch (e: any) {
       console.error(e);
@@ -88,55 +89,90 @@ const MintFlow: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full justify-between">
-      {/* top area (keep your existing design language) */}
+      {/* TOP AREA */}
       <div className="space-y-10">
-        <div className="w-full flex items-start justify-between">
-          <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.35em] text-gold/60">
-              ACTIVE WALLET
-            </div>
-            <div className="text-gold font-semibold tracking-wide">
-              {(() => {
-                const a = (userAddress ?? "").trim();
-                if (!a) return "—";
-                return `${a.slice(0, 6)}...${a.slice(-4)}`;
-              })()}
-            </div>
-          </div>
+        {status === "minted" ? (
+          // ✅ replace wallet/price block with minted badge + copy
+          <div className="w-full flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full border border-gold/35 flex items-center justify-center">
+                <svg
+                  width="18"
+                  height="14"
+                  viewBox="0 0 18 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M2 7.5L6.2 11.5L16 2.5"
+                    stroke="rgba(212,175,55,0.95)"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
 
-          <div className="px-4 py-2 rounded-full border border-gold/25 text-[10px] uppercase tracking-widest text-gold/80">
-            MONAD TESTNET
-          </div>
-        </div>
+              <div className="leading-snug">
+                <div className="text-gold/90 text-sm font-medium">
+                  {SUCCESS_COPY_1}
+                </div>
+                <div className="text-gold/70 text-sm">{SUCCESS_COPY_2}</div>
+                <div className="text-gold/55 text-sm">{SUCCESS_COPY_3}</div>
+              </div>
+            </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-[0.35em] text-gold/60">
-            MINT PRICE
+            <div className="px-4 py-2 rounded-full border border-gold/20 text-[10px] uppercase tracking-widest text-gold/60">
+              YEAR BOOK
+            </div>
           </div>
-          <div className="text-gold font-bold tracking-widest">FREE</div>
-        </div>
+        ) : (
+          <>
+            <div className="w-full flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.35em] text-gold/55">
+                  ACTIVE WALLET
+                </div>
+                {/* ✅ lighter than before */}
+                <div className="text-gold/85 font-medium tracking-wide">
+                  {shortAddr}
+                </div>
+              </div>
+
+              <div className="px-4 py-2 rounded-full border border-gold/20 text-[10px] uppercase tracking-widest text-gold/70">
+                MONAD TESTNET
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-[0.35em] text-gold/55">
+                MINT PRICE
+              </div>
+              {/* ✅ lighter than before */}
+              <div className="text-gold/80 font-medium tracking-widest">
+                FREE
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* CTA / status area */}
+      {/* CTA / STATUS AREA */}
       <div className="space-y-6">
-        {/* Error copy ABOVE the button */}
+        {/* error above button */}
         {status === "error" && error && (
           <div className="w-full text-center text-[12px] text-red-300">
             {error}
           </div>
         )}
 
-        {status === "minted" ? (
-          <div className="w-full text-left">
-            <div className="text-gold/90 text-sm font-medium">
-              {SUCCESS_COPY_1}
-            </div>
-            <div className="text-gold/60 text-sm mt-1">{SUCCESS_COPY_2}</div>
-          </div>
-        ) : status === "minting" ? (
+        {status === "minting" ? (
           <div className="w-full flex items-center justify-center py-4 rounded-full border border-gold/25 text-gold/80 text-[12px] uppercase tracking-widest">
             MINTING…
           </div>
+        ) : status === "minted" ? (
+          // minted state: keep area clean (top already shows copy)
+          <div className="w-full h-[52px]" />
         ) : (
           <button
             type="button"
@@ -147,7 +183,7 @@ const MintFlow: React.FC<Props> = ({
           </button>
         )}
 
-        {/* back (text only, centered, small) */}
+        {/* back to studio (text only, centered) */}
         {status !== "minted" && (
           <div
             onClick={status === "minting" ? undefined : onBack}
