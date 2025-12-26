@@ -205,7 +205,7 @@ const handleMintComplete = (mintId?: string) => {
           Year in Ornaments
         </h1>
         <p className="mt-4 text-sm opacity-70 max-w-lg font-light tracking-widest">
-          Preserve your 2025 self as a quiet ornament on the tree.
+          Preserve your 2025 self as a quiet memory on Year Book.
         </p>
       </header>
 
@@ -214,16 +214,11 @@ const handleMintComplete = (mintId?: string) => {
         <div className="flex flex-col w-full max-w-[520px] h-full min-h-[520px]">
       {stage === "mint" ? (
   <div className="w-full">
-    {/* Header row: MEMORY PREVIEW (center only) */}
-    <div className="mb-3 w-full flex justify-center">
-      <div className="text-[10px] uppercase tracking-[0.35em] text-gold/70 text-center">
-        MEMORY PREVIEW
-      </div>
-    </div>
+  
 
     <MemoryCard
       imageUrl={ornamentState.generatedImageUrl || ""}
-      wish={wish}
+      wish={"This memory is ready for your Year Book."}
       memoryNoText="MEMORY NO. ???"
       estText="EST. 2025"
       backgroundClassName="bg-burgundy/55 shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
@@ -387,32 +382,9 @@ const handleMintComplete = (mintId?: string) => {
                 {ornamentState.generatedImageUrl && (
                   <div className="mt-3 w-full shrink-0 h-[88px] px-2">
                     <div className="flex items-center justify-between mb-2 px-4">
-                      <span className="text-[10px] uppercase tracking-[0.25em] text-white/30">
-                        YOUR 2026 WISH
-                      </span>
-                      <button
-                        onClick={() => setWish(pickWish(wish))}
-                        className="px-4 py-2 rounded-full border border-gold/30 text-[10px] uppercase font-bold tracking-widest text-gold/90 hover:bg-gold hover:text-burgundy transition-all"
-                        type="button"
-                      >
-                        SHUFFLE
-                      </button>
-                    </div>
-
-                    <div className="px-4">
-                      <input
-                        value={wish}
-                        onChange={(e) => setWish(e.target.value)}
-                        maxLength={WISH_MAX}
-                        className="
-                          w-full bg-transparent border-0 outline-none
-                          font-serif italic text-[#FFDFA6] text-[14px]
-                          whitespace-nowrap truncate
-                          drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]
-                        "
-                        placeholder={`Keep it within ~${WISH_MAX} chars`}
-                      />
-                    </div>
+                  
+             
+                 </div>
                   </div>
                 )}
               </div>
@@ -437,7 +409,7 @@ const handleMintComplete = (mintId?: string) => {
                   {counts.mint >= MAX_MINTS
                     ? "Limit Reached"
                     : walletAddress
-                    ? "Confirm & Hang on Tree"
+                    ? "CONFIRM THIS MEMORY"
                     : "Verify Invite to Mint"}
                 </button>
               </div>
