@@ -19,7 +19,6 @@ function dataUrlToBuffer(dataUrl: string) {
   const b64 = match[2];
   const buffer = Buffer.from(b64, "base64");
 
-  // mime 기반 확장자 추정
   const ext =
     mime.includes("png") ? "png" :
     mime.includes("jpeg") || mime.includes("jpg") ? "jpg" :
@@ -37,6 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { image, wallet, description } = (req.body as any) || {};
 
+    // ✅ 구경모드(월렛 없음)에서는 민트 절대 불가
     if (!image || !wallet) {
       return res.status(400).json({ message: "Missing params: image, wallet" });
     }
@@ -73,22 +73,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ message: rpcErr.message });
     }
 
-    // 4) ornaments 테이블 insert
-    const { error: insertErr } = await supabase.from("ornaments").insert({
-      wallet_address: addr,
-      image_url: publicUrl,
-      description: description || null,
-    });
+    // 4) ornaments 테이블 insert + ✅ id 반환 (mintId)
+    const { data: inserted, error: insertErr } = await supabase
+      .from("ornaments")
+      .insert({
+        wallet_address: addr,
+        image_url: publicUrl,
+        description: description || null,
+      })
+      .select("id")
+      .single();
 
     if (insertErr) {
       console.error("insert error:", insertErr);
       return res.status(500).json({ message: insertErr.message });
     }
 
+    const mintId = inserted?.id;
+
     return res.status(200).json({
       txHash: "0x" + Math.random().toString(16).slice(2),
       publicUrl,
       newMintCount,
+      mintId, // ✅ 추가: 프론트에서 /yearbook/2025/mint/:mintId 로 라우팅 가능
     });
   } catch (e: any) {
     console.error("mint handler error:", e);

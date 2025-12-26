@@ -9,7 +9,8 @@ import { ArcService } from "./services/arcService";
 import { STYLE_OPTIONS } from "./constants";
 import { AppStage, OrnamentState } from "./types";
 import { Plus, Sparkles, TreePine, Zap } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+
 
 
 
@@ -36,9 +37,22 @@ type AppProps = {
 };
 
 const App: React.FC<AppProps> = ({ routeStage }) => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [stage, setStage] = useState<AppStage>(routeStage ?? "wallet-entry");
   useEffect(() => {
+  const p = location.pathname;
+
+  // URL로 들어왔을 때 stage만 맞춰줌 (UI는 그대로)
+  if (p === "/") return;
+
+  if (p === "/intro") setStage("intro");
+  else if (p === "/studio") setStage("studio");
+  else if (p === "/mint") setStage("mint");
+}, [location.pathname]);
+
+  useEffect(() => {
+    
   if (!routeStage) return;
   setStage(routeStage);
 }, [routeStage]);
@@ -328,7 +342,7 @@ const handleMintComplete = (mintId?: string) => {
             <MintFlow
               imageUrl={ornamentState.generatedImageUrl!}
               description={wish || ornamentState.description || "Custom Memory"}
-              userAddress={walletAddress || undefined}
+             userAddress={walletAddress!}
               onMintComplete={handleMintComplete}
               onBack={() => setStage("studio")}
             />

@@ -18,7 +18,7 @@ export type GenResult = { imageUrl: string; description: string };
 export async function generateOrnament(file: File, styleId: string): Promise<GenResult> {
   const { base64, mimeType } = await fileToBase64(file);
 
- const res = await fetch("/api/ornament.ts", {
+ const res = await fetch("/api/ornament", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
