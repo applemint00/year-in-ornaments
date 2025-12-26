@@ -92,38 +92,35 @@ const MintFlow: React.FC<Props> = ({
       {/* TOP AREA */}
       <div className="space-y-10">
         {status === "minted" ? (
-          // ✅ replace wallet/price block with minted badge + copy
-          <div className="w-full flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full border border-gold/35 flex items-center justify-center">
-                <svg
-                  width="18"
-                  height="14"
-                  viewBox="0 0 18 14"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2 7.5L6.2 11.5L16 2.5"
-                    stroke="rgba(212,175,55,0.95)"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-
-              <div className="leading-snug">
-                <div className="text-gold/90 text-sm font-medium">
-                  {SUCCESS_COPY_1}
-                </div>
-                <div className="text-gold/70 text-sm">{SUCCESS_COPY_2}</div>
-                <div className="text-gold/55 text-sm">{SUCCESS_COPY_3}</div>
-              </div>
+          // ✅ replace wallet/price block with CENTERED minted badge + copy (no extra pills)
+          <div className="w-full flex flex-col items-center justify-center space-y-6 py-4">
+            <div className="w-14 h-14 rounded-full border border-gold/35 flex items-center justify-center">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M20 6L9 17l-5-5"
+                  stroke="rgba(212,175,55,0.95)"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
 
-            <div className="px-4 py-2 rounded-full border border-gold/20 text-[10px] uppercase tracking-widest text-gold/60">
-              YEAR BOOK
+            <div className="text-center leading-snug">
+              <div className="text-[10px] uppercase tracking-[0.35em] text-gold/70">
+                MINTED
+              </div>
+              <div className="mt-2 text-gold/90 text-sm font-medium">
+                {SUCCESS_COPY_1}
+              </div>
+              <div className="text-gold/70 text-sm">{SUCCESS_COPY_2}</div>
+              <div className="text-gold/55 text-sm">{SUCCESS_COPY_3}</div>
             </div>
           </div>
         ) : (
