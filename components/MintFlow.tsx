@@ -32,6 +32,10 @@ const SUCCESS_COPY_1 = "Minted.";
 const SUCCESS_COPY_2 = "This memory has been sealed.";
 const SUCCESS_COPY_3 = "Now, let’s begin your Year Book.";
 
+const MINTED_TEXT_DELAY_MS = 250; // Minted 텍스트 뜨는 딜레이
+const MINTED_COPY_DELAY_MS = 650; // 카피(3줄) 뜨는 딜레이
+const ROUTE_DELAY_MS = 2400; // Yearbook으로 넘어가는 딜레이(짧으면 스쳐 지나감)
+
 const MintFlow: React.FC<Props> = ({
   imageUrl,
   description,
@@ -42,11 +46,22 @@ const MintFlow: React.FC<Props> = ({
   const mintFn = useMemo(() => resolveMintFn(), []);
   const [status, setStatus] = useState<UiStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+
+  // ✅ minted 연출용 state
+  const [showMintedText, setShowMintedText] = useState(false);
+  const [showMintedCopy, setShowMintedCopy] = useState(false);
+
+  // ✅ 타임아웃들 정리
+  const timeoutsRef = useRef<number[]>([]);
+
+  const clearAllTimeouts = () => {
+    timeoutsRef.current.forEach((t) => window.clearTimeout(t));
+    timeoutsRef.current = [];
+  };
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+      clearAllTimeouts();
     };
   }, []);
 
@@ -57,8 +72,14 @@ const MintFlow: React.FC<Props> = ({
   })();
 
   const handleMint = async () => {
+    // ✅ reset
+    clearAllTimeouts();
     setError(null);
     setStatus("minting");
+
+    // ✅ minted 연출 리셋
+    setShowMintedText(false);
+    setShowMintedCopy(false);
 
     try {
       if (!mintFn) throw new Error("Mint function not found");
@@ -74,12 +95,23 @@ const MintFlow: React.FC<Props> = ({
 
       if (!mintId) throw new Error("Mint succeeded but mintId is missing");
 
-      // minted acknowledgement
+      // ✅ minted acknowledgement
       setStatus("minted");
 
-      timeoutRef.current = window.setTimeout(() => {
-        onMintComplete(mintId);
-      }, 1000);
+      // ✅ staged reveal (체크 원은 바로 / 텍스트와 카피는 딜레이)
+      timeoutsRef.current.push(
+        window.setTimeout(() => setShowMintedText(true), MINTED_TEXT_DELAY_MS)
+      );
+      timeoutsRef.current.push(
+        window.setTimeout(() => setShowMintedCopy(true), MINTED_COPY_DELAY_MS)
+      );
+
+      // ✅ route after 충분히 보여주고 넘어가기
+      timeoutsRef.current.push(
+        window.setTimeout(() => {
+          onMintComplete(mintId);
+        }, ROUTE_DELAY_MS)
+      );
     } catch (e: any) {
       console.error(e);
       setStatus("error");
@@ -92,12 +124,13 @@ const MintFlow: React.FC<Props> = ({
       {/* TOP AREA */}
       <div className="space-y-10">
         {status === "minted" ? (
-          // ✅ replace wallet/price block with CENTERED minted badge + copy (no extra pills)
-          <div className="w-full flex flex-col items-center justify-center space-y-6 py-4">
-            <div className="w-14 h-14 rounded-full border border-gold/35 flex items-center justify-center">
+          // ✅ replace wallet/price block with CENTERED minted badge + copy (bigger + delayed text)
+          <div className="w-full flex flex-col items-center justify-center text-center pt-10">
+            {/* big check badge */}
+            <div className="w-20 h-20 rounded-full border border-gold/35 flex items-center justify-center">
               <svg
-                width="22"
-                height="22"
+                width="28"
+                height="28"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -105,22 +138,32 @@ const MintFlow: React.FC<Props> = ({
                 <path
                   d="M20 6L9 17l-5-5"
                   stroke="rgba(212,175,55,0.95)"
-                  strokeWidth="2.2"
+                  strokeWidth="2.6"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
             </div>
 
-            <div className="text-center leading-snug">
-              <div className="text-[10px] uppercase tracking-[0.35em] text-gold/70">
-                MINTED
-              </div>
-              <div className="mt-2 text-gold/90 text-sm font-medium">
+            {/* Minted text (delayed) */}
+            <div
+              className={`mt-7 transition-opacity duration-300 ${
+                showMintedText ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="text-gold/95 text-2xl font-semibold tracking-wide">
                 {SUCCESS_COPY_1}
               </div>
-              <div className="text-gold/70 text-sm">{SUCCESS_COPY_2}</div>
-              <div className="text-gold/55 text-sm">{SUCCESS_COPY_3}</div>
+            </div>
+
+            {/* Copy (more delayed) */}
+            <div
+              className={`mt-5 space-y-2 transition-opacity duration-500 ${
+                showMintedCopy ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="text-gold/80 text-sm">{SUCCESS_COPY_2}</div>
+              <div className="text-gold/65 text-sm">{SUCCESS_COPY_3}</div>
             </div>
           </div>
         ) : (
@@ -168,7 +211,7 @@ const MintFlow: React.FC<Props> = ({
             MINTING…
           </div>
         ) : status === "minted" ? (
-          // minted state: keep area clean (top already shows copy)
+          // minted state: keep CTA area clean (top already shows the animation/copy)
           <div className="w-full h-[52px]" />
         ) : (
           <button
